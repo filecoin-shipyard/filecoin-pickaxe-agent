@@ -1,7 +1,7 @@
 {
   "name": "filecoin-pickaxe-agent",
   "version": "0.0.1",
-  "description": "Agent to perform requested filecoin tasks",
+  "description": "Agent to perform requested Filecoin tasks",
   "scripts": {
     "dev": "nodemon --ignore dist --exec babel-node index.js",
     "build": "babel *.js --out-dir dist",
