@@ -16,6 +16,7 @@
   "dependencies": {
     "bignumber.js": "^8.1.1",
     "filecoin-api-client": "^0.2.0",
+    "immer": "^3.1.2",
     "peer-base": "peer-base/peer-base#fix/load-ormap-causal-context"
   },
   "devDependencies": {
