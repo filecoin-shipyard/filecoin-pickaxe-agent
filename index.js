@@ -7,11 +7,14 @@ import { groupStart, groupStop } from './group'
 async function run () {
   const group = await groupStart()
   const bundleImports = await group.bundleImports()
+  const dealRequests = await group.dealRequests()
 
   printCollab()
   printBundleImports()
+  printDealRequests()
   group.collaboration.shared.on('state changed', printCollab)
   bundleImports.shared.on('state changed', printBundleImports)
+  dealRequests.shared.on('state changed', printDealRequests)
 
   function printCollab () {
     console.log('collaboration', group.collaboration.shared.value())
@@ -19,6 +22,10 @@ async function run () {
 
   function printBundleImports () {
     console.log('bundleImports', bundleImports.shared.value())
+  }
+
+  function printDealRequests () {
+    console.log('dealRequests', dealRequests.shared.value())
   }
 
   let state = {}
