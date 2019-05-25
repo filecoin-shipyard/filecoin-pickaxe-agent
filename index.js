@@ -1,23 +1,32 @@
 #!/usr/bin/env node
 
+import { homedir } from 'os'
+import path from 'path'
 import { formatWithOptions } from 'util'
 import produce from 'immer'
-import { groupStart, groupStop } from './group'
+import { mineshaftStart, mineshaftStop } from '@jimpick/filecoin-pickaxe-mineshaft'
 
 async function run () {
-  const group = await groupStart()
-  const bundleImports = await group.bundleImports()
-  const dealRequests = await group.dealRequests()
+  const configFile = path.resolve(
+    homedir(),
+    '.filecoin-pickaxe',
+    'pickaxe-config'
+  )
+  const mineshaft = await mineshaftStart('filecoin-pickaxe-agent', configFile)
+  const bundleImports = await mineshaft.bundleImports()
+  const dealRequests = await mineshaft.dealRequests()
+  const minerDealRequests = await mineshaft.minerDealRequests()
 
   printCollab()
   printBundleImports()
   printDealRequests()
-  group.collaboration.shared.on('state changed', printCollab)
+  mineshaft.collaboration.shared.on('state changed', printCollab)
   bundleImports.shared.on('state changed', printBundleImports)
   dealRequests.shared.on('state changed', printDealRequests)
+  minerDealRequests.shared.on('state changed', printMinerDealRequests)
 
   function printCollab () {
-    console.log('collaboration', group.collaboration.shared.value())
+    console.log('collaboration', mineshaft.collaboration.shared.value())
   }
 
   function printBundleImports () {
@@ -28,14 +37,18 @@ async function run () {
     console.log('dealRequests', dealRequests.shared.value())
   }
 
+  function printMinerDealRequests () {
+    console.log('minerDealRequests', minerDealRequests.shared.value())
+  }
+
   let state = {}
   updateState()
-  group.collaboration.shared.on('state changed', updateState)
+  mineshaft.collaboration.shared.on('state changed', updateState)
   bundleImports.shared.on('state changed', updateState)
 
   function updateState () {
     const newState = produce(state, draft => {
-      draft.bundles = group.collaboration.shared.value()
+      draft.bundles = mineshaft.collaboration.shared.value()
         .map(string => JSON.parse(string))
       const rawBundleImports = bundleImports.shared.value()
       const formattedBundleImports = {}
@@ -65,4 +78,4 @@ async function run () {
 
 run()
 
-process.on('beforeExit', groupStop)
+process.on('beforeExit', mineshaftStop)
