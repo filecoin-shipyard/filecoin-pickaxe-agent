@@ -6,6 +6,8 @@ import { formatWithOptions } from 'util'
 import produce from 'immer'
 import { mineshaftStart, mineshaftStop } from '@jimpick/filecoin-pickaxe-mineshaft'
 
+const activeRequests = new Set()
+
 async function run () {
   const configFile = path.resolve(
     homedir(),
@@ -26,30 +28,37 @@ async function run () {
   minerDealRequests.shared.on('state changed', printMinerDealRequests)
 
   function printCollab () {
-    console.log('collaboration', mineshaft.collaboration.shared.value())
+    // console.log('collaboration', mineshaft.collaboration.shared.value())
   }
 
   function printBundleImports () {
-    console.log('bundleImports', bundleImports.shared.value())
+    // console.log('bundleImports', bundleImports.shared.value())
   }
 
   function printDealRequests () {
-    console.log('dealRequests', dealRequests.shared.value())
+    // console.log('dealRequests', dealRequests.shared.value())
   }
 
   function printMinerDealRequests () {
-    console.log('minerDealRequests', minerDealRequests.shared.value())
+    // console.log('minerDealRequests', minerDealRequests.shared.value())
   }
 
   let state = {}
   updateState()
-  mineshaft.collaboration.shared.on('state changed', updateState)
-  bundleImports.shared.on('state changed', updateState)
+  // mineshaft.collaboration.shared.on('state changed', updateState)
+  // bundleImports.shared.on('state changed', updateState)
+  dealRequests.shared.on('state changed', updateState)
 
   function updateState () {
     const newState = produce(state, draft => {
+      // bundles
+      /*
       draft.bundles = mineshaft.collaboration.shared.value()
         .map(string => JSON.parse(string))
+      */
+
+      // bundleImports
+      /*
       const rawBundleImports = bundleImports.shared.value()
       const formattedBundleImports = {}
       Object.keys(rawBundleImports).forEach(bundleName => {
@@ -62,10 +71,23 @@ async function run () {
               ...JSON.parse([...rawImports[timestamp]][0])
             })
           })
-
         formattedBundleImports[bundleName] = imports
       })
       draft.bundleImports = formattedBundleImports
+      */
+
+      // dealRequests
+      const rawDealRequests = dealRequests.shared.value()
+      const formattedDealRequests = {}
+      Object.keys(rawDealRequests).forEach(dealRequestId => {
+        const rawDealRequest = rawDealRequests[dealRequestId]
+        const formatted = {}
+        formatted.dealRequest = JSON.parse(
+          [...rawDealRequest.dealRequest][0]
+        )
+        formattedDealRequests[dealRequestId] = formatted
+      })
+      draft.dealRequests = formattedDealRequests
     })
     state = newState
     // console.log('New state', formatWithOptions(state, { depth: Infinity }))
