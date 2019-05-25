@@ -3,4 +3,3 @@ yarn.lock
 yarn-error.log
 node_modules
 *.swp
-dist

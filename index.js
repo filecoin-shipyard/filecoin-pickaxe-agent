@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 
-import { homedir } from 'os'
-import path from 'path'
-import { formatWithOptions } from 'util'
-import produce from 'immer'
-import nanobus from 'nanobus'
-import nanostate from 'nanostate'
-import delay from 'delay'
-import { mineshaftStart, mineshaftStop } from '@jimpick/filecoin-pickaxe-mineshaft'
-
-const activeRequests = new Map()
+const { homedir } = require('os')
+const path = require('path')
+const { formatWithOptions } = require('util')
+const produce = require('immer').default
+const nanobus = require('nanobus')
+const nanostate = require('nanostate')
+const delay = require('delay')
+const { mineshaftStart, mineshaftStop } = require('@jimpick/filecoin-pickaxe-mineshaft')
 
 const bus = nanobus()
 
@@ -21,28 +19,45 @@ const statesAndTransitions = {
   done: {}
 }
 
-bus.on('newState', ({ dealRequests }) => {
-  // console.log('New state')
+const active = new Set()
+
+bus.on('newState', ({ dealRequests }, context) => {
   for (const dealRequestId in dealRequests) {
-    if (!activeRequests.has(dealRequestId)) {
-      const dealRequest = dealRequests[dealRequestId]
-      activeRequests.set(dealRequestId, dealRequest)
-      bus.emit('newDealRequest', dealRequestId)
+    const dealRequest = dealRequests[dealRequestId]
+    if (!dealRequest.agentState && !active.has(dealRequestId)) {
+      active.add(dealRequestId)
+      bus.emit('newDealRequest', dealRequestId, dealRequest, context)
     }
   }
 })
 
-bus.on('newDealRequest', async dealRequestId => {
-  const dealRequest = activeRequests.get(dealRequestId)
+bus.on('newDealRequest', async (dealRequestId, dealRequest, context) => {
   console.log('New deal request', dealRequestId, dealRequest)
   const machine = nanostate('started', statesAndTransitions)
   while (machine.state !== 'done') {
     console.log('Entered:', machine.state, dealRequestId)
+    updateDealRequestState()
+    console.log('Jim1', dealRequestId)
     await delay(1000)
+    console.log('Jim2', dealRequestId)
     machine.emit('next')
+    console.log('Jim3', dealRequestId)
   }
   console.log('Done', dealRequestId)
+  updateDealRequestState()
+
+  function updateDealRequestState () {
+    const record = {
+      state: machine.state
+    }
+    context.dealRequests.applySub(
+      dealRequestId, 'ormap', 'applySub',
+      `agentState`, 'mvreg', 'write',
+      JSON.stringify(record)
+    )
+  }
 })
+
 
 async function run () {
   const configFile = path.resolve(
@@ -62,6 +77,14 @@ async function run () {
   bundleImports.shared.on('state changed', printBundleImports)
   dealRequests.shared.on('state changed', printDealRequests)
   minerDealRequests.shared.on('state changed', printMinerDealRequests)
+
+  const context = {
+    mineshaft,
+    bundles: mineshaft.collaboration.shared,
+    bundleImports: bundleImports.shared,
+    dealRequests: dealRequests.shared,
+    minerDealRequests: minerDealRequests.shared
+  }
 
   function printCollab () {
     // console.log('collaboration', mineshaft.collaboration.shared.value())
@@ -115,28 +138,30 @@ async function run () {
       // dealRequests
       const rawDealRequests = dealRequests.shared.value()
       const formattedDealRequests = {}
-      Object.keys(rawDealRequests).forEach(dealRequestId => {
+      for (const dealRequestId in rawDealRequests) {
         const rawDealRequest = rawDealRequests[dealRequestId]
         const formatted = {}
-        formatted.dealRequest = JSON.parse(
-          [...rawDealRequest.dealRequest][0]
-        )
+        for (const propKey in rawDealRequest) {
+          const propValue = rawDealRequest[propKey]
+          formatted[propKey] = JSON.parse([...propValue][0])
+        }
         formattedDealRequests[dealRequestId] = formatted
-      })
+      }
       draft.dealRequests = formattedDealRequests
     })
     state = newState
-    // console.log('New state', formatWithOptions(state, { depth: Infinity }))
-    /*
     console.log(
       'New state',
       formatWithOptions({ colors: true, depth: Infinity }, '%O', state)
     )
-    */
-    bus.emit('newState', state)
+    bus.emit('newState', state, context)
   }
 }
 
 run()
 
-process.on('beforeExit', mineshaftStop)
+process.on('SIGINT', async () => {
+  console.log('Exiting...')
+  await mineshaftStop()
+  console.log('Done.')
+})

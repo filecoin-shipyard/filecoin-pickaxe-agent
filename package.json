@@ -3,12 +3,10 @@
   "version": "0.0.1",
   "description": "Agent to perform requested Filecoin tasks",
   "scripts": {
-    "dev": "nodemon --ignore dist --exec babel-node index.js",
-    "build": "babel *.js --out-dir dist",
-    "prepublish": "npm run build"
+    "dev": "nodemon node index.js",
   },
   "bin": {
-    "pickaxe-agent": "dist/index.js"
+    "pickaxe-agent": "index.js"
   },
   "keywords": [],
   "author": "Jim Pick (@jimpick)",
@@ -24,10 +22,6 @@
     "peer-base": "peer-base/peer-base#fix/load-ormap-causal-context"
   },
   "devDependencies": {
-    "@babel/cli": "^7.4.3",
-    "@babel/core": "^7.4.3",
-    "@babel/node": "^7.2.2",
-    "@babel/preset-env": "^7.4.3",
     "babel-plugin-shebang": "^1.0.0",
     "nodemon": "^1.18.11"
   },
