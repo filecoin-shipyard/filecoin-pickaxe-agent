@@ -6,11 +6,20 @@ import { formatWithOptions } from 'util'
 import produce from 'immer'
 import nanobus from 'nanobus'
 import nanostate from 'nanostate'
+import delay from 'delay'
 import { mineshaftStart, mineshaftStop } from '@jimpick/filecoin-pickaxe-mineshaft'
 
 const activeRequests = new Map()
 
 const bus = nanobus()
+
+const statesAndTransitions = {
+  started: { next: 'one' },
+  one: { next: 'two' },
+  two: { next: 'three' },
+  three: { next: 'done' },
+  done: {}
+}
 
 bus.on('newState', ({ dealRequests }) => {
   // console.log('New state')
@@ -23,9 +32,16 @@ bus.on('newState', ({ dealRequests }) => {
   }
 })
 
-bus.on('newDealRequest', dealRequestId => {
+bus.on('newDealRequest', async dealRequestId => {
   const dealRequest = activeRequests.get(dealRequestId)
   console.log('New deal request', dealRequestId, dealRequest)
+  const machine = nanostate('started', statesAndTransitions)
+  while (machine.state !== 'done') {
+    console.log('Entered:', machine.state, dealRequestId)
+    await delay(1000)
+    machine.emit('next')
+  }
+  console.log('Done', dealRequestId)
 })
 
 async function run () {
