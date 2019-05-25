@@ -4,9 +4,29 @@ import { homedir } from 'os'
 import path from 'path'
 import { formatWithOptions } from 'util'
 import produce from 'immer'
+import nanobus from 'nanobus'
+import nanostate from 'nanostate'
 import { mineshaftStart, mineshaftStop } from '@jimpick/filecoin-pickaxe-mineshaft'
 
-const activeRequests = new Set()
+const activeRequests = new Map()
+
+const bus = nanobus()
+
+bus.on('newState', ({ dealRequests }) => {
+  // console.log('New state')
+  for (const dealRequestId in dealRequests) {
+    if (!activeRequests.has(dealRequestId)) {
+      const dealRequest = dealRequests[dealRequestId]
+      activeRequests.set(dealRequestId, dealRequest)
+      bus.emit('newDealRequest', dealRequestId)
+    }
+  }
+})
+
+bus.on('newDealRequest', dealRequestId => {
+  const dealRequest = activeRequests.get(dealRequestId)
+  console.log('New deal request', dealRequestId, dealRequest)
+})
 
 async function run () {
   const configFile = path.resolve(
@@ -91,10 +111,13 @@ async function run () {
     })
     state = newState
     // console.log('New state', formatWithOptions(state, { depth: Infinity }))
+    /*
     console.log(
       'New state',
       formatWithOptions({ colors: true, depth: Infinity }, '%O', state)
     )
+    */
+    bus.emit('newState', state)
   }
 }
 
