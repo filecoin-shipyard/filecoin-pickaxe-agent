@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Agent to perform requested Filecoin tasks",
   "scripts": {
-    "dev": "nodemon node index.js",
+    "dev": "nodemon node index.js"
   },
   "bin": {
     "pickaxe-agent": "index.js"
@@ -12,14 +12,13 @@
   "author": "Jim Pick (@jimpick)",
   "license": "MIT",
   "dependencies": {
-    "@jimpick/filecoin-pickaxe-mineshaft": "^0.0.7",
-    "bignumber.js": "^8.1.1",
+    "@jimpick/filecoin-pickaxe-mineshaft": "^0.0.8",
+    "bignumber.js": "^9.0.0",
     "delay": "^4.2.0",
     "filecoin-api-client": "^0.2.0",
     "immer": "^3.1.2",
     "nanobus": "^4.4.0",
-    "nanostate": "^1.2.1",
-    "peer-base": "peer-base/peer-base#fix/load-ormap-causal-context"
+    "nanostate": "^1.2.1"
   },
   "devDependencies": {
     "babel-plugin-shebang": "^1.0.0",
