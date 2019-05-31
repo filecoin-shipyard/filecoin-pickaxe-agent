@@ -46,6 +46,8 @@ bus.on('newDealRequest', async (dealRequestId, dealRequest, context) => {
       await worker.queueProposeDeal(jobBus)
     } else if (machine.state === 'queued') {
       await waitFor('started')
+    } else if (machine.state === 'proposing') {
+      await waitFor('finished')
     } else {
       await delay(1000)
     }
