@@ -8,11 +8,15 @@ const nanobus = require('nanobus')
 const nanostate = require('nanostate')
 const delay = require('delay')
 const { mineshaftStart, mineshaftStop } = require('@jimpick/filecoin-pickaxe-mineshaft')
+const worker = require('./worker')
 
 const bus = nanobus()
 
 const statesAndTransitions = {
-  started: { next: 'one' },
+  ack: { next: 'queuing' },
+  queuing: { next: 'queued' },
+  queued: { next: 'proposing' },
+  proposing: { next: 'one' },
   one: { next: 'two' },
   two: { next: 'three' },
   three: { next: 'done' },
@@ -33,18 +37,26 @@ bus.on('newState', ({ dealRequests }, context) => {
 
 bus.on('newDealRequest', async (dealRequestId, dealRequest, context) => {
   console.log('New deal request', dealRequestId, dealRequest)
-  const machine = nanostate('started', statesAndTransitions)
+  const machine = nanostate('ack', statesAndTransitions)
+  const jobBus = nanobus() 
   while (machine.state !== 'done') {
     console.log('Entered:', machine.state, dealRequestId)
     updateDealRequestState()
-    console.log('Jim1', dealRequestId)
-    await delay(1000)
-    console.log('Jim2', dealRequestId)
+    if (machine.state === 'queuing') {
+      await worker.queueProposeDeal(jobBus)
+    } else if (machine.state === 'queued') {
+      await waitFor('started')
+    } else {
+      await delay(1000)
+    }
     machine.emit('next')
-    console.log('Jim3', dealRequestId)
   }
   console.log('Done', dealRequestId)
   updateDealRequestState()
+
+  function waitFor (message) {
+    return new Promise(resolve => jobBus.once(message, resolve))
+  }
 
   function updateDealRequestState () {
     const record = {
@@ -150,10 +162,12 @@ async function run () {
       draft.dealRequests = formattedDealRequests
     })
     state = newState
+    /*
     console.log(
       'New state',
       formatWithOptions({ colors: true, depth: Infinity }, '%O', state)
     )
+    */
     bus.emit('newState', state, context)
   }
 }
