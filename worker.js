@@ -11,30 +11,40 @@ async function queueProposeDeal (jobBus, dealRequestId, dealRequest) {
     await delay(0)
     jobBus.emit('started')
     await delay(0)
-    console.log('Job started', dealRequestId, dealRequest)
+    console.log('Job started', dealRequestId)
     const before = Date.now()
     const { cid, ask, duration } = dealRequest
+    const prefix = `${dealRequestId}:`
     console.log(
+      prefix,
       `go-filecoin client propose-storage-deal ` +
       `--allow-duplicates ${ask.miner} ${cid} ${ask.id} ${duration}`
     )
     try {
-      const [output, code] = await spawnAndWait('go-filecoin', [
-        'client',
-        'propose-storage-deal',
-        '--allow-duplicates',
-        ask.miner,
-        cid,
-        `${ask.id}`,
-        `${duration}`
-      ], { prefix: `${dealRequestId}: ` } )
+      const [output, code] = await spawnAndWait(
+        'go-filecoin',
+        [
+          'client',
+          'propose-storage-deal',
+          '--allow-duplicates',
+          ask.miner,
+          cid,
+          `${ask.id}`,
+          `${duration}`
+        ],
+        { prefix }
+      )
       const elapsed = Math.floor((Date.now() - before) / 1000)
       console.log(`${dealRequestId}: Done in ${elapsed}s. Exit code: ${code}`)
-      console.log('Job finished')
-      jobBus.emit('finished')
+      if (code === 0) {
+        jobBus.emit('success')
+      } else {
+        jobBus.emit('fail')
+      }
+      console.log('Job finished', dealRequestId)
     } catch (e) {
       console.error('Propose deal error', e)
-      jobBus.emit('error')
+      jobBus.emit('fail')
     }
   }
 }
@@ -49,7 +59,7 @@ function spawnAndWait (cmd, args, options = {}) {
 		child.on('error', e => reject(e))
 
 		function appendOutput (data) {
-			process.stdout.write(`${options.prefix}${data.toString()}`)
+			process.stdout.write(`${options.prefix} ${data.toString()}`)
 			output += data
 		}
 	})

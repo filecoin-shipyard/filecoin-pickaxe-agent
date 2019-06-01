@@ -16,7 +16,11 @@ const statesAndTransitions = {
   ack: { next: 'queuing' },
   queuing: { next: 'queued' },
   queued: { next: 'proposing' },
-  proposing: { next: 'one' },
+  proposing: {
+    success: 'one',
+    fail: 'proposeFailed'
+  },
+  proposeFailed: {},
   one: { next: 'two' },
   two: { next: 'three' },
   three: { next: 'done' },
@@ -39,7 +43,7 @@ bus.on('newDealRequest', async (dealRequestId, dealRequest, context) => {
   console.log('New deal request', dealRequestId, dealRequest)
   const machine = nanostate('ack', statesAndTransitions)
   const jobBus = nanobus() 
-  while (machine.state !== 'done') {
+  while (Object.keys(statesAndTransitions[machine.state]).length > 0) {
     console.log('Entered:', machine.state, dealRequestId)
     updateDealRequestState()
     if (machine.state === 'queuing') {
@@ -48,20 +52,31 @@ bus.on('newDealRequest', async (dealRequestId, dealRequest, context) => {
         dealRequestId,
         dealRequest.dealRequest
       )
+      machine.emit('next')
     } else if (machine.state === 'queued') {
       await waitFor('started')
+      machine.emit('next')
     } else if (machine.state === 'proposing') {
-      await waitFor('finished')
+      const result = await waitFor(['success', 'fail'])
+      machine.emit(result)
     } else {
       await delay(1000)
+      machine.emit('next')
     }
-    machine.emit('next')
   }
   console.log('Done', dealRequestId)
   updateDealRequestState()
 
   function waitFor (message) {
-    return new Promise(resolve => jobBus.once(message, resolve))
+    if (typeof message === 'object') { // Array
+      const messages = message
+      const promises = messages.map(message => waitFor(message))
+      return Promise.race(promises)
+    } else {
+      return new Promise(resolve => {
+        return jobBus.once(message, () => resolve(message))
+      })
+    }
   }
 
   function updateDealRequestState () {
