@@ -2,7 +2,7 @@ const { spawn } = require('child_process')
 const PQueue = require('p-queue')
 const delay = require('delay')
 
-const queue = new PQueue({ concurrency: 3 })
+const queue = new PQueue({ concurrency: 6 })
 
 async function queueProposeDeal (jobBus, dealRequestId, dealRequest) {
   queue.add(() => run())
@@ -36,10 +36,22 @@ async function queueProposeDeal (jobBus, dealRequestId, dealRequest) {
       )
       const elapsed = Math.floor((Date.now() - before) / 1000)
       console.log(`${dealRequestId}: Done in ${elapsed}s. Exit code: ${code}`)
+      let errorMsg
+      let dealId
+      output.split('\n').map(line => {
+        const matchError = line.match(/^Error: (.*)/)
+        if (matchError) {
+          errorMsg = matchError[1]
+        }
+        const matchDealId = line.match(/^DealID: *(.*)/)
+        if (matchDealId) {
+          dealId = matchDealId[1]
+        }
+      })
       if (code === 0) {
-        jobBus.emit('success')
+        jobBus.emit('success', { dealId })
       } else {
-        jobBus.emit('fail')
+        jobBus.emit('fail', { errorMsg })
       }
       console.log('Job finished', dealRequestId)
     } catch (e) {

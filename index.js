@@ -17,14 +17,11 @@ const statesAndTransitions = {
   queuing: { next: 'queued' },
   queued: { next: 'proposing' },
   proposing: {
-    success: 'one',
-    fail: 'proposeFailed'
+    success: 'dealSuccess',
+    fail: 'dealFailed'
   },
-  proposeFailed: {},
-  one: { next: 'two' },
-  two: { next: 'three' },
-  three: { next: 'done' },
-  done: {}
+  dealFailed: {},
+  dealSuccess: {}
 }
 
 const active = new Set()
@@ -57,7 +54,21 @@ bus.on('newDealRequest', async (dealRequestId, dealRequest, context) => {
       await waitFor('started')
       machine.emit('next')
     } else if (machine.state === 'proposing') {
-      const result = await waitFor(['success', 'fail'])
+      const [ result, data ] = await waitFor(['success', 'fail'])
+      if (result === 'fail') {
+        context.dealRequests.applySub(
+          dealRequestId, 'ormap', 'applySub',
+          `errorMsg`, 'mvreg', 'write',
+          JSON.stringify(data)
+        )
+      }
+      if (result === 'success') {
+        context.dealRequests.applySub(
+          dealRequestId, 'ormap', 'applySub',
+          `deal`, 'mvreg', 'write',
+          JSON.stringify(data)
+        )
+      }
       machine.emit(result)
     } else {
       await delay(1000)
@@ -74,7 +85,7 @@ bus.on('newDealRequest', async (dealRequestId, dealRequest, context) => {
       return Promise.race(promises)
     } else {
       return new Promise(resolve => {
-        return jobBus.once(message, () => resolve(message))
+        return jobBus.once(message, data => resolve([ message, data ]))
       })
     }
   }
