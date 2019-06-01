@@ -43,7 +43,11 @@ bus.on('newDealRequest', async (dealRequestId, dealRequest, context) => {
     console.log('Entered:', machine.state, dealRequestId)
     updateDealRequestState()
     if (machine.state === 'queuing') {
-      await worker.queueProposeDeal(jobBus)
+      await worker.queueProposeDeal(
+        jobBus,
+        dealRequestId,
+        dealRequest.dealRequest
+      )
     } else if (machine.state === 'queued') {
       await waitFor('started')
     } else if (machine.state === 'proposing') {
@@ -72,9 +76,8 @@ bus.on('newDealRequest', async (dealRequestId, dealRequest, context) => {
   }
 })
 
-
 async function run () {
-  const configFile = path.resolve(
+  const configFile = process.argv[2] || path.resolve(
     homedir(),
     '.filecoin-pickaxe',
     'pickaxe-config'
