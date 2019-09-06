@@ -1,6 +1,6 @@
 {
   "name": "filecoin-pickaxe-agent",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Agent to perform requested Filecoin tasks",
   "scripts": {
     "dev": "nodemon node index.js"
@@ -12,7 +12,7 @@
   "author": "Jim Pick (@jimpick)",
   "license": "MIT",
   "dependencies": {
-    "@jimpick/filecoin-pickaxe-mineshaft": "^0.0.10",
+    "@jimpick/filecoin-pickaxe-mineshaft": "^0.0.13",
     "bignumber.js": "^9.0.0",
     "delay": "^4.2.0",
     "filecoin-api-client": "^0.5.1",
