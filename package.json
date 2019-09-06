@@ -1,6 +1,6 @@
 {
   "name": "filecoin-pickaxe-agent",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Agent to perform requested Filecoin tasks",
   "scripts": {
     "dev": "nodemon node index.js"
@@ -40,6 +40,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jimpick/filecoin-pickaxe.git"
+    "url": "git+https://github.com/filecoin-shipyard/filecoin-pickaxe.git"
   }
 }
